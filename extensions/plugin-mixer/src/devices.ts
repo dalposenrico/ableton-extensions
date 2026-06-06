@@ -51,6 +51,10 @@ export const BUILTIN_DEVICES: string[] = [
   "Random",
   "Scale",
   "Velocity",
+  // Racks
+  "Audio Effect Rack",
+  "Instrument Rack",
+  "MIDI Effect Rack",
   // Instruments
   "Analog",
   "Collision",

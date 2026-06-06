@@ -15,11 +15,11 @@
 
   /* ── Topbar ── */
   .topbar {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding: 7px 12px; background: #161616;
     border-bottom: 1px solid #2a2a2a; flex-shrink: 0;
   }
-  .topbar h1 { font-size: 12px; font-weight: 600; color: #eee; margin-right: 4px; }
+  .topbar h1 { font-size: 12px; font-weight: 600; color: #eee; margin-right: 2px; }
 
   .btn-group {
     display: flex; background: #222; border-radius: 4px;
@@ -36,10 +36,28 @@
   .btn-group button.active { background: #2a3a2a; color: #9fd09f; }
   .btn-group button.danger:hover { color: #f08080; background: #2a1a1a; }
 
+  /* Plugin selection action bar — hidden until plugins selected */
+  .plugin-action-bar {
+    display: none; align-items: center; gap: 6px;
+    background: #1a2a3a; border: 1px solid #2a4a6a;
+    border-radius: 4px; padding: 3px 8px;
+  }
+  .plugin-action-bar.visible { display: flex; }
+  .plugin-action-bar .count { font-size: 10px; color: #7ab8d8; white-space: nowrap; }
+  .pab-btn {
+    padding: 3px 8px; font-size: 10px; border-radius: 3px;
+    border: 1px solid #2a4a6a; background: #1e3a50;
+    color: #8cc8f0; cursor: pointer; white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .pab-btn:hover { background: #264a60; }
+  .pab-btn.del { border-color: #502a2a; background: #3a1a1a; color: #f08080; }
+  .pab-btn.del:hover { background: #4a2020; }
+  .pab-sep { color: #333; font-size: 10px; }
+
   .spacer { flex: 1; }
 
   .global-add-btn {
-    display: flex; align-items: center; gap: 5px;
     background: #2a3a2a; border: 1px solid #3a5a3a;
     border-radius: 4px; color: #9fd09f; padding: 4px 10px;
     font-size: 10px; cursor: pointer; transition: background 0.1s;
@@ -47,6 +65,21 @@
   }
   .global-add-btn:hover { background: #344834; }
   .global-add-btn:disabled { opacity: 0.35; cursor: default; }
+
+  .undo-btn {
+    background: none; border: 1px solid #333; border-radius: 4px;
+    color: #666; padding: 4px 8px; font-size: 13px; line-height: 1;
+    cursor: pointer; transition: color 0.1s, border-color 0.1s, background 0.1s;
+  }
+  .undo-btn:hover:not(:disabled) { color: #ccc; border-color: #555; background: #242424; }
+  .undo-btn:disabled { opacity: 0.25; cursor: default; }
+
+  .cancel-btn {
+    background: none; border: 1px solid #333; border-radius: 4px;
+    color: #666; padding: 5px 14px; font-size: 11px;
+    cursor: pointer; transition: background 0.1s, color 0.1s;
+  }
+  .cancel-btn:hover { background: #242424; color: #ccc; border-color: #555; }
 
   .done-btn {
     background: #2a4a6a; border: none; border-radius: 4px;
@@ -103,14 +136,22 @@
   .plugin-slot {
     height: 24px; border-radius: 3px;
     display: flex; align-items: center;
-    padding: 0 5px; gap: 3px; transition: background 0.1s;
+    padding: 0 5px; gap: 3px; transition: background 0.1s, border-color 0.1s;
   }
   .plugin-slot.filled {
-    background: #2a3a2a; border: 1px solid #3a5a3a; cursor: grab;
+    background: #2a3a2a; border: 1px solid #3a5a3a; cursor: pointer;
   }
   .plugin-slot.filled:hover { background: #344834; }
-  .plugin-slot.filled.dragging { opacity: 0.4; cursor: grabbing; }
+  .plugin-slot.filled.dragging { opacity: 0.4; }
   .plugin-slot.filled.drag-over { border-color: #6ab06a; background: #2e4a2e; box-shadow: 0 0 0 1px #6ab06a; }
+
+  /* Plugin selected state — blue tint, distinct from green track selection */
+  .plugin-slot.filled.plugin-selected {
+    background: #1e3040; border-color: #4a90ba;
+    box-shadow: 0 0 0 1px #4a90ba;
+  }
+  .plugin-slot.filled.plugin-selected:hover { background: #243848; }
+  .plugin-slot.filled.plugin-selected .plugin-name { color: #8cc8f0; }
 
   .plugin-slot.empty {
     background: transparent; border: 1px dashed #2a2a2a;
@@ -127,8 +168,18 @@
     text-overflow: ellipsis; font-size: 10px; color: #9fd09f;
     pointer-events: none;
   }
+  /* Third-party VST/AU slots — muted green, can't be inserted cross-track */
+  .plugin-slot.filled.is-vst { background: #2a2e2a; border-color: #3a3e3a; }
+  .plugin-slot.filled.is-vst:hover { background: #2e342e; }
+  .plugin-slot.filled.is-vst .plugin-name { color: #7a9a7a; }
+  .vst-badge {
+    font-size: 8px; color: #556655; background: #222; border: 1px solid #334;
+    border-radius: 2px; padding: 0 3px; line-height: 13px; flex-shrink: 0;
+    pointer-events: none; font-weight: 600; letter-spacing: 0.3px;
+  }
   .slot-actions { display: none; gap: 2px; flex-shrink: 0; }
   .plugin-slot.filled:hover .slot-actions { display: flex; }
+  .plugin-slot.filled.plugin-selected .slot-actions { display: flex; }
 
   .slot-btn {
     background: none; border: none; color: #666; cursor: pointer;
@@ -155,9 +206,7 @@
     width: 100%; background: #1e1e1e; border: 1px solid #333;
     border-radius: 3px; padding: 5px 8px; color: #ddd; font-size: 11px; outline: none;
   }
-  .dd-scope {
-    font-size: 9px; color: #666; padding: 0 2px;
-  }
+  .dd-scope { font-size: 9px; color: #666; padding: 0 2px; }
   .dd-scope strong { color: #999; }
   .dropdown-list { max-height: 200px; overflow-y: auto; padding: 4px 0; }
   .dropdown-item {
@@ -166,7 +215,6 @@
     overflow: hidden; text-overflow: ellipsis;
   }
   .dropdown-item:hover { background: #333; color: #fff; }
-  .dropdown-item.highlighted { background: #2a3a2a; color: #9fd09f; }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -178,7 +226,7 @@
 <div class="topbar">
   <h1>Plugin Mixer</h1>
 
-  <!-- Selection controls -->
+  <!-- Track selection -->
   <div class="btn-group">
     <button id="selAll">All</button>
     <button id="selTracks">Tracks</button>
@@ -192,15 +240,26 @@
     <button id="posStart">↑ Start</button>
   </div>
 
+  <!-- Plugin selection action bar (visible when plugins selected) -->
+  <div class="plugin-action-bar" id="pluginActionBar">
+    <span class="count" id="pluginSelCount"></span>
+    <span class="pab-sep">|</span>
+    <button class="pab-btn del" id="pabDelete">Delete</button>
+    <button class="pab-btn" id="pabDuplicate">Duplicate</button>
+    <button class="pab-btn" id="pabCopyToTracks">→ Tracks</button>
+    <button class="pab-btn danger" id="pabClear" style="border-color:#444;background:#222;color:#666;">✕</button>
+  </div>
+
   <div class="spacer"></div>
 
-  <!-- Global add -->
+  <button class="undo-btn" id="undoBtn" disabled title="Undo (⌘Z)">↩</button>
+  <button class="undo-btn" id="redoBtn" disabled title="Redo (⌘⇧Z)">↪</button>
   <button class="global-add-btn" id="globalAddBtn" disabled>＋ Add to selected</button>
-
-  <button class="done-btn" id="doneBtn">Done</button>
+  <button class="cancel-btn" id="cancelBtn">Cancel</button>
+  <button class="done-btn" id="doneBtn">Apply</button>
 </div>
 
-<div class="mixer-wrap">
+<div class="mixer-wrap" id="mixerWrap">
   <table id="mixerTable"></table>
 </div>
 
@@ -221,45 +280,104 @@
   const pendingActions = [];
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const selectedTracks = new Set();
-  let addAtStart = false;
-  let dropdownMode = null; // { type: 'slot'|'global', ti, slot }
-  let dragSrc = null;      // { ti, di, deviceName }
+  const selectedTracks  = new Set(); // track indices
+  const selectedPlugins = new Set(); // "ti:di" keys
+  let addAtStart   = false;
+  let dropdownMode = null;
+  let dragSrc      = null; // { ti, di, deviceName } or { multi: true, slots: [{ti,di,name}] }
+
+  // ── Undo / Redo history ───────────────────────────────────────────────────
+  // Each entry: { tracks: deep copy of TRACKS devices, actions: copy of pendingActions }
+  const undoStack = [];
+  const redoStack = [];
+
+  function snapshot() {
+    return {
+      tracks: TRACKS.map(t => ({ ...t, devices: t.devices.map(d => ({ ...d })) })),
+      actions: [...pendingActions],
+    };
+  }
+
+  function saveHistory() {
+    undoStack.push(snapshot());
+    redoStack.length = 0; // any new action clears redo
+    updateUndoButtons();
+  }
+
+  function restoreSnapshot(snap) {
+    // Restore each track's devices in place (TRACKS array itself is const)
+    snap.tracks.forEach((t, i) => {
+      TRACKS[i].devices = t.devices.map(d => ({ ...d }));
+    });
+    pendingActions.length = 0;
+    snap.actions.forEach(a => pendingActions.push(a));
+    selectedPlugins.clear();
+    updatePluginActionBar();
+    updateUndoButtons();
+    buildTable();
+  }
+
+  function updateUndoButtons() {
+    document.getElementById('undoBtn').disabled = undoStack.length === 0;
+    document.getElementById('redoBtn').disabled = redoStack.length === 0;
+  }
+
+  document.getElementById('undoBtn').onclick = () => {
+    if (!undoStack.length) return;
+    redoStack.push(snapshot());
+    restoreSnapshot(undoStack.pop());
+  };
+  document.getElementById('redoBtn').onclick = () => {
+    if (!redoStack.length) return;
+    undoStack.push(snapshot());
+    restoreSnapshot(redoStack.pop());
+  };
 
   // ── Palette ───────────────────────────────────────────────────────────────
-  const TRACK_PALETTE  = ['#5a8a5a','#5a6a8a','#8a5a5a','#5a7a8a','#7a5a8a','#6a8a5a','#8a6a5a','#5a8a7a','#6a5a8a','#7a6a4a'];
-  const GROUP_PALETTE  = ['#8a6a20','#7a5a30','#8a7020','#7a6828'];
+  const TRACK_PALETTE = ['#5a8a5a','#5a6a8a','#8a5a5a','#5a7a8a','#7a5a8a','#6a8a5a','#8a6a5a','#5a8a7a','#6a5a8a','#7a6a4a'];
+  const GROUP_PALETTE = ['#8a6a20','#7a5a30','#8a7020','#7a6828'];
   function trackColor(t, i) {
     return t.isGroup ? GROUP_PALETTE[i % GROUP_PALETTE.length] : TRACK_PALETTE[i % TRACK_PALETTE.length];
   }
+
+  const BUILTIN_SET = new Set(ALL_DEVICES);
+  function isBuiltin(name) { return BUILTIN_SET.has(name); }
 
   function getMaxSlots() {
     return Math.max(10, ...TRACKS.map(t => t.devices.length + 1));
   }
 
-  // ── Selection helpers ─────────────────────────────────────────────────────
-  function updateSelectionUI() {
-    const n = selectedTracks.size;
-    document.getElementById('globalAddBtn').disabled = n === 0;
+  // ── Plugin selection helpers ──────────────────────────────────────────────
+  function pluginKey(ti, di) { return `${ti}:${di}`; }
+
+  function updatePluginActionBar() {
+    const bar = document.getElementById('pluginActionBar');
+    const n = selectedPlugins.size;
+    if (n > 0) {
+      bar.classList.add('visible');
+      document.getElementById('pluginSelCount').textContent = `${n} plugin${n > 1 ? 's' : ''} selected`;
+      document.getElementById('pabCopyToTracks').disabled = selectedTracks.size === 0;
+    } else {
+      bar.classList.remove('visible');
+    }
+  }
+
+  function clearPluginSelection() {
+    selectedPlugins.clear();
+    updatePluginActionBar();
     buildTable();
   }
 
-  document.getElementById('selAll').onclick = () => {
-    TRACKS.forEach((_, i) => selectedTracks.add(i));
-    updateSelectionUI();
-  };
-  document.getElementById('selTracks').onclick = () => {
-    TRACKS.forEach((t, i) => { if (!t.isGroup) selectedTracks.add(i); });
-    updateSelectionUI();
-  };
-  document.getElementById('selGroups').onclick = () => {
-    TRACKS.forEach((t, i) => { if (t.isGroup) selectedTracks.add(i); });
-    updateSelectionUI();
-  };
-  document.getElementById('selClear').onclick = () => {
-    selectedTracks.clear();
-    updateSelectionUI();
-  };
+  // ── Track selection helpers ───────────────────────────────────────────────
+  function updateTrackSelectionUI() {
+    document.getElementById('globalAddBtn').disabled = selectedTracks.size === 0;
+    buildTable();
+  }
+
+  document.getElementById('selAll').onclick    = () => { TRACKS.forEach((_, i) => selectedTracks.add(i)); updateTrackSelectionUI(); };
+  document.getElementById('selTracks').onclick = () => { TRACKS.forEach((t, i) => { if (!t.isGroup) selectedTracks.add(i); }); updateTrackSelectionUI(); };
+  document.getElementById('selGroups').onclick = () => { TRACKS.forEach((t, i) => { if (t.isGroup) selectedTracks.add(i); }); updateTrackSelectionUI(); };
+  document.getElementById('selClear').onclick  = () => { selectedTracks.clear(); updateTrackSelectionUI(); };
 
   // ── Position toggle ───────────────────────────────────────────────────────
   document.getElementById('posEnd').onclick = () => {
@@ -273,6 +391,79 @@
     document.getElementById('posEnd').classList.remove('active');
   };
 
+  // ── Plugin action bar buttons ─────────────────────────────────────────────
+  document.getElementById('pabDelete').onclick = () => {
+    saveHistory();
+    // Group by track, sort each track's indices descending to avoid shift
+    const byTrack = {};
+    for (const key of selectedPlugins) {
+      const [ti, di] = key.split(':').map(Number);
+      (byTrack[ti] = byTrack[ti] || []).push(di);
+    }
+    for (const ti of Object.keys(byTrack).map(Number)) {
+      byTrack[ti].sort((a, b) => b - a); // descending
+      for (const di of byTrack[ti]) {
+        pendingActions.push({ action: 'delete', trackIndex: ti, deviceIndex: di });
+        TRACKS[ti].devices.splice(di, 1);
+        TRACKS[ti].devices.forEach((d, i) => d.index = i);
+      }
+    }
+    selectedPlugins.clear();
+    updatePluginActionBar();
+    buildTable();
+  };
+
+  document.getElementById('pabDuplicate').onclick = () => {
+    saveHistory();
+    // Duplicate each within its own track; sort ascending so inserted items don't shift targets
+    const byTrack = {};
+    for (const key of selectedPlugins) {
+      const [ti, di] = key.split(':').map(Number);
+      (byTrack[ti] = byTrack[ti] || []).push(di);
+    }
+    for (const ti of Object.keys(byTrack).map(Number)) {
+      byTrack[ti].sort((a, b) => a - b);
+      let offset = 0;
+      for (const di of byTrack[ti]) {
+        const realDi = di + offset;
+        const dev = TRACKS[ti].devices[realDi];
+        if (!dev) continue;
+        pendingActions.push({ action: 'duplicate', trackIndex: ti, deviceIndex: realDi });
+        TRACKS[ti].devices.splice(realDi + 1, 0, { name: dev.name, index: realDi + 1 });
+        TRACKS[ti].devices.forEach((d, i) => d.index = i);
+        offset++;
+      }
+    }
+    selectedPlugins.clear();
+    updatePluginActionBar();
+    buildTable();
+  };
+
+  document.getElementById('pabCopyToTracks').onclick = () => {
+    if (selectedTracks.size === 0) return;
+    saveHistory();
+    // Collect selected plugins sorted by (ti, di) — preserve order; skip VSTs (can't insert cross-track)
+    const slots = [...selectedPlugins]
+      .map(k => { const [ti, di] = k.split(':').map(Number); return { ti, di, name: TRACKS[ti]?.devices[di]?.name }; })
+      .filter(s => s.name && isBuiltin(s.name))
+      .sort((a, b) => a.ti - b.ti || a.di - b.di);
+
+    for (const toTi of selectedTracks) {
+      for (const slot of slots) {
+        const pos = addAtStart ? 0 : TRACKS[toTi].devices.length;
+        // Use 'copy' to preserve preset when bulk-copying to selected tracks
+        pendingActions.push({ action: 'copy', trackIndex: slot.ti, deviceIndex: slot.di, toTrackIndex: toTi, toPosition: pos, deleteSource: false });
+        TRACKS[toTi].devices.splice(pos, 0, { name: slot.name, index: pos });
+        TRACKS[toTi].devices.forEach((d, i) => d.index = i);
+      }
+    }
+    selectedPlugins.clear();
+    updatePluginActionBar();
+    buildTable();
+  };
+
+  document.getElementById('pabClear').onclick = clearPluginSelection;
+
   // ── Global add ────────────────────────────────────────────────────────────
   document.getElementById('globalAddBtn').onclick = (e) => {
     e.stopPropagation();
@@ -285,7 +476,6 @@
     const table = document.getElementById('mixerTable');
     table.innerHTML = '';
 
-    // Head
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     const corner = document.createElement('th');
@@ -305,7 +495,6 @@
     thead.appendChild(headRow);
     table.appendChild(thead);
 
-    // Body
     const tbody = document.createElement('tbody');
     for (let slot = 0; slot < maxSlots; slot++) {
       const row = document.createElement('tr');
@@ -323,16 +512,22 @@
         const dev = t.devices[slot];
         const isNextSlot = slot === t.devices.length;
         const hasSel = selectedTracks.size > 0 && !selectedTracks.has(ti);
+        const isPluginSel = selectedPlugins.has(pluginKey(ti, slot));
 
         if (dev) {
+          const selClass = isPluginSel ? ' plugin-selected' : '';
+          const vst = !isBuiltin(dev.name);
+          const vstClass = vst ? ' is-vst' : '';
+          const vstBadge = vst ? `<span class="vst-badge" title="Third-party plugin — cannot be inserted cross-track via SDK">VST</span>` : '';
+          const copyBtn = hasSel && !vst ? `<button class="slot-btn copy-sel" data-action="copytosel" data-ti="${ti}" data-di="${slot}" title="Copy to selected tracks">→sel</button>` : '';
           td.innerHTML = `
-            <div class="plugin-slot filled" draggable="true"
-              data-ti="${ti}" data-di="${slot}">
+            <div class="plugin-slot filled${selClass}${vstClass}" draggable="true" data-ti="${ti}" data-di="${slot}">
+              ${vstBadge}
               <span class="plugin-name" title="${escHtml(dev.name)}">${escHtml(dev.name)}</span>
               <span class="slot-actions">
                 <button class="slot-btn del" data-action="delete" data-ti="${ti}" data-di="${slot}" title="Delete">×</button>
                 <button class="slot-btn" data-action="duplicate" data-ti="${ti}" data-di="${slot}" title="Duplicate">⧉</button>
-                ${hasSel ? `<button class="slot-btn copy-sel" data-action="copytosel" data-ti="${ti}" data-di="${slot}" title="Copy to selected">→sel</button>` : ''}
+                ${copyBtn}
               </span>
             </div>`;
         } else if (isNextSlot) {
@@ -345,37 +540,40 @@
       tbody.appendChild(row);
     }
     table.appendChild(tbody);
-
-    // Re-attach drag events after rebuild
     attachDragEvents();
   }
 
-  // ── Table click delegation ────────────────────────────────────────────────
+  // ── Click delegation ──────────────────────────────────────────────────────
+  // Track header clicks
   document.getElementById('mixerTable').addEventListener('click', (e) => {
-    // Header → toggle selection
     const header = e.target.closest('[data-ti-header]');
     if (header) {
       const ti = parseInt(header.dataset.tiHeader);
+      selectedPlugins.clear(); // clear plugin selection when clicking track headers
       if (selectedTracks.has(ti)) selectedTracks.delete(ti);
       else selectedTracks.add(ti);
-      updateSelectionUI();
+      updatePluginActionBar();
+      updateTrackSelectionUI();
       return;
     }
 
-    // Action buttons
+    // Action buttons (×, ⧉, →sel)
     const btn = e.target.closest('[data-action]');
     if (btn) {
       e.stopPropagation();
       const ti = parseInt(btn.dataset.ti);
       const di = parseInt(btn.dataset.di);
       if (btn.dataset.action === 'delete') {
+        saveHistory();
         pendingActions.push({ action: 'delete', trackIndex: ti, deviceIndex: di });
         TRACKS[ti].devices.splice(di, 1);
         TRACKS[ti].devices.forEach((d, i) => d.index = i);
+        selectedPlugins.delete(pluginKey(ti, di));
         buildTable();
       } else if (btn.dataset.action === 'duplicate') {
         const dev = TRACKS[ti].devices[di];
         if (dev) {
+          saveHistory();
           pendingActions.push({ action: 'duplicate', trackIndex: ti, deviceIndex: di });
           TRACKS[ti].devices.splice(di + 1, 0, { name: dev.name, index: di + 1 });
           TRACKS[ti].devices.forEach((d, i) => d.index = i);
@@ -384,9 +582,11 @@
       } else if (btn.dataset.action === 'copytosel') {
         const dev = TRACKS[ti].devices[di];
         if (!dev) return;
+        saveHistory();
         [...selectedTracks].filter(idx => idx !== ti).forEach(idx => {
           const pos = addAtStart ? 0 : TRACKS[idx].devices.length;
-          pendingActions.push({ action: 'insert', trackIndex: idx, deviceName: dev.name, position: pos });
+          // Use 'copy' to preserve preset when copying to selected tracks
+          pendingActions.push({ action: 'copy', trackIndex: ti, deviceIndex: di, toTrackIndex: idx, toPosition: pos, deleteSource: false });
           TRACKS[idx].devices.splice(pos, 0, { name: dev.name, index: pos });
           TRACKS[idx].devices.forEach((d, i) => d.index = i);
         });
@@ -395,21 +595,62 @@
       return;
     }
 
-    // Empty slot click → open dropdown for that slot
+    // Empty slot → open dropdown
     const emptySlot = e.target.closest('.plugin-slot.empty');
     if (emptySlot) {
+      clearPluginSelection();
       const ti = parseInt(emptySlot.dataset.ti);
       const slot = parseInt(emptySlot.dataset.slot);
       openDropdown({ type: 'slot', ti, slot }, emptySlot);
       return;
     }
 
-    // Filled slot click (not button) → open dropdown to replace
+    // Beyond/background → deselect plugins
+    if (e.target.closest('.plugin-slot.beyond') || e.target.tagName === 'TD') {
+      clearPluginSelection();
+      return;
+    }
+  });
+
+  // Filled slot: single click = select/deselect, double-click = replace dropdown
+  document.getElementById('mixerTable').addEventListener('click', (e) => {
     const filledSlot = e.target.closest('.plugin-slot.filled');
-    if (filledSlot && !e.target.closest('.slot-btn')) {
-      const ti = parseInt(filledSlot.dataset.ti);
-      const di = parseInt(filledSlot.dataset.di);
-      openDropdown({ type: 'slot', ti, slot: di, replace: true }, filledSlot);
+    if (!filledSlot || e.target.closest('.slot-btn')) return;
+
+    const ti = parseInt(filledSlot.dataset.ti);
+    const di = parseInt(filledSlot.dataset.di);
+    const key = pluginKey(ti, di);
+
+    if (selectedPlugins.has(key)) {
+      selectedPlugins.delete(key);
+    } else {
+      selectedPlugins.add(key);
+    }
+    updatePluginActionBar();
+    // Update just this slot visually (avoid full rebuild for perf)
+    filledSlot.classList.toggle('plugin-selected', selectedPlugins.has(key));
+    const nameEl = filledSlot.querySelector('.plugin-name');
+    if (nameEl) nameEl.style.color = selectedPlugins.has(key) ? '#8cc8f0' : '';
+  });
+
+  document.getElementById('mixerTable').addEventListener('dblclick', (e) => {
+    const filledSlot = e.target.closest('.plugin-slot.filled');
+    if (!filledSlot || e.target.closest('.slot-btn')) return;
+    const ti = parseInt(filledSlot.dataset.ti);
+    const di = parseInt(filledSlot.dataset.di);
+    openDropdown({ type: 'slot', ti, slot: di, replace: true }, filledSlot);
+  });
+
+  // ESC to clear plugin selection
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { clearPluginSelection(); return; }
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById('undoBtn').click();
+    } else if (mod && (e.key === 'Z' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      document.getElementById('redoBtn').click();
     }
   });
 
@@ -419,12 +660,7 @@
       el.addEventListener('dragstart', onDragStart);
       el.addEventListener('dragend', onDragEnd);
     });
-    document.querySelectorAll('.plugin-slot.empty, .plugin-slot.beyond').forEach(el => {
-      el.addEventListener('dragover', onDragOver);
-      el.addEventListener('dragleave', onDragLeave);
-      el.addEventListener('drop', onDrop);
-    });
-    document.querySelectorAll('.plugin-slot.filled').forEach(el => {
+    document.querySelectorAll('.plugin-slot.empty, .plugin-slot.beyond, .plugin-slot.filled').forEach(el => {
       el.addEventListener('dragover', onDragOver);
       el.addEventListener('dragleave', onDragLeave);
       el.addEventListener('drop', onDrop);
@@ -435,10 +671,23 @@
     const slot = e.currentTarget;
     const ti = parseInt(slot.dataset.ti);
     const di = parseInt(slot.dataset.di);
-    dragSrc = { ti, di, deviceName: TRACKS[ti].devices[di]?.name };
+    const key = pluginKey(ti, di);
+
+    // If dragging a selected plugin, drag all selected together
+    if (selectedPlugins.has(key) && selectedPlugins.size > 1) {
+      const slots = [...selectedPlugins]
+        .map(k => { const [sti, sdi] = k.split(':').map(Number); return { ti: sti, di: sdi, name: TRACKS[sti]?.devices[sdi]?.name }; })
+        .filter(s => s.name)
+        .sort((a, b) => a.ti - b.ti || a.di - b.di);
+      dragSrc = { multi: true, slots };
+      e.dataTransfer.setData('text/plain', slots.map(s => s.name).join(', '));
+    } else {
+      dragSrc = { ti, di, deviceName: TRACKS[ti]?.devices[di]?.name };
+      e.dataTransfer.setData('text/plain', dragSrc.deviceName);
+    }
+
     slot.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', dragSrc.deviceName);
   }
 
   function onDragEnd(e) {
@@ -454,9 +703,7 @@
     e.currentTarget.classList.add('drag-over');
   }
 
-  function onDragLeave(e) {
-    e.currentTarget.classList.remove('drag-over');
-  }
+  function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 
   function onDrop(e) {
     e.preventDefault();
@@ -465,59 +712,84 @@
 
     const target = e.currentTarget;
     const toTi = parseInt(target.dataset.ti);
-    const toSlot = target.dataset.slot !== undefined
-      ? parseInt(target.dataset.slot)                   // empty/beyond → insert at slot index
-      : parseInt(target.dataset.di);                    // filled → swap position
+    let actualPos = target.dataset.slot !== undefined
+      ? parseInt(target.dataset.slot)
+      : parseInt(target.dataset.di);
 
-    if (dragSrc.ti === toTi && dragSrc.di === toSlot) return; // same slot, no-op
+    if (target.classList.contains('beyond')) actualPos = TRACKS[toTi].devices.length;
 
-    const devName = dragSrc.deviceName;
-    const fromTi = dragSrc.ti;
-    const fromDi = dragSrc.di;
+    saveHistory();
 
-    // Determine actual target position
-    let actualPos = toSlot;
-    if (target.classList.contains('beyond')) {
-      actualPos = TRACKS[toTi].devices.length; // drop beyond = append
+    if (dragSrc.multi) {
+      // Move all selected plugins to target track with preset preservation
+      const slots = dragSrc.slots;
+      let insertAt = actualPos;
+      for (const s of slots) {
+        // Use 'copy' with deleteSource:true — backend reads params, inserts, applies, then deletes source
+        pendingActions.push({ action: 'copy', trackIndex: s.ti, deviceIndex: s.di, toTrackIndex: toTi, toPosition: insertAt, deleteSource: true });
+        TRACKS[toTi].devices.splice(insertAt, 0, { name: s.name, index: insertAt });
+        TRACKS[toTi].devices.forEach((d, i) => d.index = i);
+        insertAt++;
+      }
+      // Remove from local state (descending to avoid index shift)
+      const byTrack = {};
+      slots.forEach(s => (byTrack[s.ti] = byTrack[s.ti] || []).push(s.di));
+      for (const sti of Object.keys(byTrack).map(Number)) {
+        byTrack[sti].sort((a, b) => b - a);
+        for (const sdi of byTrack[sti]) {
+          TRACKS[sti].devices.splice(sdi, 1);
+          TRACKS[sti].devices.forEach((d, i) => d.index = i);
+        }
+      }
+      selectedPlugins.clear();
+    } else {
+      const { ti: fromTi, di: fromDi, deviceName } = dragSrc;
+      if (fromTi === toTi && fromDi === actualPos) { dragSrc = null; return; }
+
+      if (fromTi === toTi) {
+        // Same-track reorder: use insert+delete (no preset loss, same track)
+        TRACKS[toTi].devices.splice(actualPos, 0, { name: deviceName, index: actualPos });
+        TRACKS[toTi].devices.forEach((d, i) => d.index = i);
+        TRACKS[fromTi].devices.splice(fromDi, 1);
+        TRACKS[fromTi].devices.forEach((d, i) => d.index = i);
+        pendingActions.push({ action: 'insert', trackIndex: toTi, deviceName, position: actualPos });
+        pendingActions.push({ action: 'delete', trackIndex: fromTi, deviceIndex: fromDi });
+      } else {
+        // Cross-track move: use 'copy' with deleteSource:true to preserve preset
+        TRACKS[toTi].devices.splice(actualPos, 0, { name: deviceName, index: actualPos });
+        TRACKS[toTi].devices.forEach((d, i) => d.index = i);
+        TRACKS[fromTi].devices.splice(fromDi, 1);
+        TRACKS[fromTi].devices.forEach((d, i) => d.index = i);
+        pendingActions.push({ action: 'copy', trackIndex: fromTi, deviceIndex: fromDi, toTrackIndex: toTi, toPosition: actualPos, deleteSource: true });
+      }
     }
 
-    // Update local state
-    TRACKS[fromTi].devices.splice(fromDi, 1);
-    TRACKS[fromTi].devices.forEach((d, i) => d.index = i);
-    TRACKS[toTi].devices.splice(actualPos, 0, { name: devName, index: actualPos });
-    TRACKS[toTi].devices.forEach((d, i) => d.index = i);
-
-    // Queue actions for Live
-    pendingActions.push({ action: 'delete', trackIndex: fromTi, deviceIndex: fromDi });
-    pendingActions.push({ action: 'insert', trackIndex: toTi, deviceName: devName, position: actualPos });
-
     dragSrc = null;
+    updatePluginActionBar();
     buildTable();
   }
 
   // ── Dropdown ──────────────────────────────────────────────────────────────
   function openDropdown(mode, anchorEl) {
     dropdownMode = mode;
-    const overlay = document.getElementById('dropdownOverlay');
-    const box = document.getElementById('dropdownBox');
-    const search = document.getElementById('dropdownSearch');
-    const scope = document.getElementById('ddScope');
+    const overlay  = document.getElementById('dropdownOverlay');
+    const box      = document.getElementById('dropdownBox');
+    const search   = document.getElementById('dropdownSearch');
+    const scope    = document.getElementById('ddScope');
 
     if (mode.type === 'global') {
       const pos = addAtStart ? 'start' : 'end';
       scope.innerHTML = `Adding to <strong>${selectedTracks.size} selected track${selectedTracks.size > 1 ? 's' : ''}</strong> at <strong>${pos}</strong>`;
     } else {
       const tName = TRACKS[mode.ti]?.name ?? '';
-      const pos = mode.replace ? `slot ${mode.slot + 1}` : (addAtStart ? 'start' : 'end');
       scope.innerHTML = mode.replace
         ? `Replacing slot ${mode.slot + 1} on <strong>${escHtml(tName)}</strong>`
-        : `Adding to <strong>${escHtml(tName)}</strong> at ${pos}`;
+        : `Adding to <strong>${escHtml(tName)}</strong>`;
     }
 
     const rect = anchorEl.getBoundingClientRect();
     box.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
-    const topPos = rect.bottom + 4;
-    box.style.top = Math.min(topPos, window.innerHeight - 280) + 'px';
+    box.style.top  = Math.min(rect.bottom + 4, window.innerHeight - 280) + 'px';
 
     overlay.classList.add('open');
     search.value = '';
@@ -545,9 +817,9 @@
 
   function selectDevice(deviceName) {
     if (!dropdownMode) return;
+    saveHistory();
 
     if (dropdownMode.type === 'global') {
-      // Add to all selected tracks at start/end
       [...selectedTracks].forEach(idx => {
         const pos = addAtStart ? 0 : TRACKS[idx].devices.length;
         pendingActions.push({ action: 'insert', trackIndex: idx, deviceName, position: pos });
@@ -575,25 +847,26 @@
 
   document.getElementById('dropdownOverlay').addEventListener('click', closeDropdown);
   document.getElementById('dropdownSearch').addEventListener('input', e => filterDropdown(e.target.value));
-  document.getElementById('dropdownSearch').addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeDropdown();
-  });
+  document.getElementById('dropdownSearch').addEventListener('keydown', e => { if (e.key === 'Escape') closeDropdown(); });
 
   // ── Done ──────────────────────────────────────────────────────────────────
-  document.getElementById('doneBtn').addEventListener('click', () => {
-    const result = JSON.stringify(pendingActions);
+  function sendAndClose(result) {
     if (window.webkit?.messageHandlers?.live) {
       window.webkit.messageHandlers.live.postMessage({ method: 'close_and_send', params: [result] });
     } else if (window.chrome?.webview) {
       window.chrome.webview.postMessage({ method: 'close_and_send', params: [result] });
     }
-  });
+  }
+
+  document.getElementById('cancelBtn').addEventListener('click', () => sendAndClose('[]'));
+  document.getElementById('doneBtn').addEventListener('click', () => sendAndClose(JSON.stringify(pendingActions)));
 
   function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   buildTable();
+  updatePluginActionBar();
 </script>
 </body>
 </html>
