@@ -1,4 +1,3 @@
-import type { ArrangementSelection, ClipSlotSelection } from "@ableton-extensions/sdk";
 import {
   initialize,
   type ActivationContext,
@@ -15,21 +14,31 @@ type AnyTrack = AudioTrack<"1.0.0"> | MidiTrack<"1.0.0">;
 interface TrackData {
   index: number;
   name: string;
+  type: "audio" | "midi";
   devices: { name: string; index: number }[];
 }
 
 interface MixerAction {
-  action: "insert" | "insert_all" | "delete" | "duplicate";
-  trackIndex?: number;
+  action: "insert" | "delete" | "duplicate";
+  trackIndex: number;
   deviceName?: string;
   deviceIndex?: number;
   position?: number;
 }
 
-async function getTrackData(track: AnyTrack, index: number): Promise<TrackData> {
+function getAllTracks(context: ReturnType<typeof initialize>): AnyTrack[] {
+  const song = context.application.song;
+  if (!song) return [];
+  return song.tracks.filter(
+    (t): t is AnyTrack => t instanceof AudioTrack || t instanceof MidiTrack,
+  );
+}
+
+function getTrackData(track: AnyTrack, index: number): TrackData {
   return {
     index,
     name: track.name,
+    type: track instanceof AudioTrack ? "audio" : "midi",
     devices: track.devices.map((d, i) => ({ name: d.name, index: i })),
   };
 }
@@ -37,21 +46,35 @@ async function getTrackData(track: AnyTrack, index: number): Promise<TrackData> 
 export function activate(activation: ActivationContext) {
   const context = initialize(activation, "1.0.0");
 
-  async function openMixer(tracks: AnyTrack[]) {
-    const trackData = await Promise.all(tracks.map((t, i) => getTrackData(t, i)));
+  async function openMixer() {
+    const tracks = getAllTracks(context);
+    if (!tracks.length) {
+      console.log("[Plugin Mixer] No tracks found in song.");
+      return;
+    }
 
-    // Inline the HTML with data injected
-    const uiPath = path.resolve(process.cwd(), "dist", "ui", "index.html");
-    let html = fs.readFileSync(uiPath, "utf8");
+    const trackData = tracks.map((t, i) => getTrackData(t, i));
+    console.log(`[Plugin Mixer] Opening with ${tracks.length} tracks`);
+
+    // __dirname is CJS global — points to dist/ folder where extension.js lives
+    const uiPath = path.resolve(__dirname, "ui", "index.html");
+    let html: string;
+    try {
+      html = fs.readFileSync(uiPath, "utf8");
+    } catch (e) {
+      console.error("[Plugin Mixer] Could not read ui/index.html:", e);
+      return;
+    }
+
     html = html
-      .replace('"__TRACKS_DATA__"', JSON.stringify(trackData))
-      .replace('"__DEVICES_DATA__"', JSON.stringify(BUILTIN_DEVICES));
+      .replace("'__TRACKS_DATA__'", JSON.stringify(trackData))
+      .replace("'__DEVICES_DATA__'", JSON.stringify(BUILTIN_DEVICES));
 
     const dataUrl = `data:text/html,${encodeURIComponent(html)}`;
 
     let resultJson: string;
     try {
-      resultJson = await context.ui.showModalDialog(dataUrl, 900, 500);
+      resultJson = await context.ui.showModalDialog(dataUrl, 1100, 600);
     } catch {
       return;
     }
@@ -71,100 +94,36 @@ export function activate(activation: ActivationContext) {
   }
 
   async function handleAction(msg: MixerAction, tracks: AnyTrack[]) {
-    if (msg.action === "insert_all" && msg.deviceName) {
-      const name = msg.deviceName;
-      const promises = context.withinTransaction(() =>
-        tracks.map((track) => track.insertDevice(name, track.devices.length)),
-      );
-      await Promise.all(promises);
-    } else if (msg.action === "insert" && msg.trackIndex !== undefined && msg.deviceName) {
-      const track = tracks[msg.trackIndex];
-      if (!track) return;
-      await track.insertDevice(msg.deviceName, msg.position ?? track.devices.length);
-    } else if (msg.action === "delete" && msg.trackIndex !== undefined && msg.deviceIndex !== undefined) {
-      const track = tracks[msg.trackIndex];
-      if (!track) return;
+    const track = tracks[msg.trackIndex];
+    if (!track) return;
+
+    if (msg.action === "insert" && msg.deviceName) {
+      const pos = msg.position ?? track.devices.length;
+      await track.insertDevice(msg.deviceName, pos);
+    } else if (msg.action === "delete" && msg.deviceIndex !== undefined) {
       const device = track.devices[msg.deviceIndex];
-      if (!device) return;
-      await track.deleteDevice(device);
-    } else if (msg.action === "duplicate" && msg.trackIndex !== undefined && msg.deviceIndex !== undefined) {
-      const track = tracks[msg.trackIndex];
-      if (!track) return;
+      if (device) await track.deleteDevice(device);
+    } else if (msg.action === "duplicate" && msg.deviceIndex !== undefined) {
       const device = track.devices[msg.deviceIndex];
-      if (!device) return;
-      await track.duplicateDevice(device);
+      if (device) await track.duplicateDevice(device);
     }
   }
 
-  // ── Audio track selection (arrangement) ──────────────────────────────────
+  // ── Register on AudioTrack right-click ───────────────────────────────────
   context.commands.registerCommand(
-    "pluginmixer.openAudio",
-    (arg: unknown) =>
-      void (async (selection: ArrangementSelection) => {
-        const tracks = selection.selected_lanes
-          .map((h) => context.getObjectFromHandle(h, DataModelObject))
-          .filter((o): o is AudioTrack<"1.0.0"> => o instanceof AudioTrack);
-        if (!tracks.length) return;
-        await openMixer(tracks);
-      })(arg as ArrangementSelection).catch(console.error),
+    "pluginmixer.open",
+    () => void openMixer().catch(console.error),
   );
 
   context.ui.registerContextMenuAction(
-    "AudioTrack.ArrangementSelection",
+    "AudioTrack",
     "Plugin Mixer",
-    "pluginmixer.openAudio",
-  );
-
-  // ── MIDI track selection (arrangement) ───────────────────────────────────
-  context.commands.registerCommand(
-    "pluginmixer.openMidi",
-    (arg: unknown) =>
-      void (async (selection: ArrangementSelection) => {
-        const tracks = selection.selected_lanes
-          .map((h) => context.getObjectFromHandle(h, DataModelObject))
-          .filter((o): o is MidiTrack<"1.0.0"> => o instanceof MidiTrack);
-        if (!tracks.length) return;
-        await openMixer(tracks);
-      })(arg as ArrangementSelection).catch(console.error),
+    "pluginmixer.open",
   );
 
   context.ui.registerContextMenuAction(
-    "MidiTrack.ArrangementSelection",
+    "MidiTrack",
     "Plugin Mixer",
-    "pluginmixer.openMidi",
-  );
-
-  // ── Clip slot selection (session view) ───────────────────────────────────
-  context.commands.registerCommand(
-    "pluginmixer.openClipSlot",
-    (arg: unknown) =>
-      void (async (selection: ClipSlotSelection) => {
-        // Deduplicate tracks from clip slot handles
-        const seen = new Set<unknown>();
-        const tracks: AnyTrack[] = [];
-        for (const handle of selection.selected_clip_slots) {
-          const obj = context.getObjectFromHandle(handle, DataModelObject);
-          if (seen.has(obj)) continue;
-          seen.add(obj);
-          // ClipSlot's parent track is resolved via the object's track property
-          const trackObj = (obj as unknown as { track?: unknown }).track;
-          if (!trackObj) continue;
-          const track = context.getObjectFromHandle(
-            trackObj as Parameters<typeof context.getObjectFromHandle>[0],
-            DataModelObject,
-          );
-          if (track instanceof AudioTrack || track instanceof MidiTrack) {
-            tracks.push(track as AnyTrack);
-          }
-        }
-        if (!tracks.length) return;
-        await openMixer(tracks);
-      })(arg as ClipSlotSelection).catch(console.error),
-  );
-
-  context.ui.registerContextMenuAction(
-    "ClipSlotSelection",
-    "Plugin Mixer",
-    "pluginmixer.openClipSlot",
+    "pluginmixer.open",
   );
 }
