@@ -8,7 +8,7 @@ A collection of custom Ableton Live extensions built with the [Extensions SDK](h
 
 | Extension | Description |
 |-----------|-------------|
-| *(coming soon)* | |
+| [plugin-mixer](extensions/plugin-mixer) | Pro Tools-style plugin chain viewer. Right-click selected tracks to see all devices per track, add Ableton built-in devices to one or all tracks at once, delete, and duplicate. |
 
 ## Setup
 
