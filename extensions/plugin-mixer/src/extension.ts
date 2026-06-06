@@ -15,15 +15,18 @@ interface TrackData {
   index: number;
   name: string;
   type: "audio" | "midi";
+  isGroup: boolean;
   devices: { name: string; index: number }[];
 }
 
 interface MixerAction {
-  action: "insert" | "delete" | "duplicate";
+  action: "insert" | "delete" | "duplicate" | "move";
   trackIndex: number;
   deviceName?: string;
   deviceIndex?: number;
   position?: number;
+  toTrackIndex?: number;
+  toPosition?: number;
 }
 
 function getAllTracks(context: ReturnType<typeof initialize>): AnyTrack[] {
@@ -34,13 +37,21 @@ function getAllTracks(context: ReturnType<typeof initialize>): AnyTrack[] {
   );
 }
 
-function getTrackData(track: AnyTrack, index: number): TrackData {
-  return {
-    index,
-    name: track.name,
-    type: track instanceof AudioTrack ? "audio" : "midi",
-    devices: track.devices.map((d, i) => ({ name: d.name, index: i })),
-  };
+function buildTrackData(tracks: AnyTrack[]): TrackData[] {
+  // Detect group tracks: any track that is the groupTrack of another track
+  const groupTrackSet = new Set<AnyTrack>();
+  for (const t of tracks) {
+    const parent = t.groupTrack;
+    if (parent) groupTrackSet.add(parent as AnyTrack);
+  }
+
+  return tracks.map((t, i) => ({
+    index: i,
+    name: t.name,
+    type: t instanceof AudioTrack ? "audio" : "midi",
+    isGroup: groupTrackSet.has(t),
+    devices: t.devices.map((d, j) => ({ name: d.name, index: j })),
+  }));
 }
 
 export function activate(activation: ActivationContext) {
@@ -49,14 +60,13 @@ export function activate(activation: ActivationContext) {
   async function openMixer() {
     const tracks = getAllTracks(context);
     if (!tracks.length) {
-      console.log("[Plugin Mixer] No tracks found in song.");
+      console.log("[Plugin Mixer] No tracks found.");
       return;
     }
 
-    const trackData = tracks.map((t, i) => getTrackData(t, i));
+    const trackData = buildTrackData(tracks);
     console.log(`[Plugin Mixer] Opening with ${tracks.length} tracks`);
 
-    // __dirname is CJS global — points to dist/ folder where extension.js lives
     const uiPath = path.resolve(__dirname, "ui", "index.html");
     let html: string;
     try {
@@ -74,7 +84,7 @@ export function activate(activation: ActivationContext) {
 
     let resultJson: string;
     try {
-      resultJson = await context.ui.showModalDialog(dataUrl, 1100, 600);
+      resultJson = await context.ui.showModalDialog(dataUrl, 1200, 650);
     } catch {
       return;
     }
@@ -97,33 +107,40 @@ export function activate(activation: ActivationContext) {
     const track = tracks[msg.trackIndex];
     if (!track) return;
 
-    if (msg.action === "insert" && msg.deviceName) {
+    if (msg.action === "insert" && msg.deviceName !== undefined) {
       const pos = msg.position ?? track.devices.length;
       await track.insertDevice(msg.deviceName, pos);
+
     } else if (msg.action === "delete" && msg.deviceIndex !== undefined) {
       const device = track.devices[msg.deviceIndex];
       if (device) await track.deleteDevice(device);
+
     } else if (msg.action === "duplicate" && msg.deviceIndex !== undefined) {
       const device = track.devices[msg.deviceIndex];
       if (device) await track.duplicateDevice(device);
+
+    } else if (msg.action === "move" && msg.toTrackIndex !== undefined && msg.deviceIndex !== undefined) {
+      // Move = insert same device name on target, then delete from source
+      // (SDK can't physically move a device cross-track, so we re-insert by name)
+      const device = track.devices[msg.deviceIndex];
+      if (!device) return;
+      const toTrack = tracks[msg.toTrackIndex];
+      if (!toTrack) return;
+      const toPos = msg.toPosition ?? toTrack.devices.length;
+      await toTrack.insertDevice(device.name, toPos);
+      await track.deleteDevice(device);
     }
   }
 
-  // ── Register on AudioTrack right-click ───────────────────────────────────
   context.commands.registerCommand(
     "pluginmixer.open",
     () => void openMixer().catch(console.error),
   );
 
-  context.ui.registerContextMenuAction(
-    "AudioTrack",
-    "Plugin Mixer",
-    "pluginmixer.open",
-  );
-
-  context.ui.registerContextMenuAction(
-    "MidiTrack",
-    "Plugin Mixer",
-    "pluginmixer.open",
-  );
+  void Promise.all([
+    context.ui.registerContextMenuAction("AudioTrack", "Plugin Mixer", "pluginmixer.open"),
+    context.ui.registerContextMenuAction("MidiTrack", "Plugin Mixer", "pluginmixer.open"),
+  ]).then(() => {
+    console.log("[Plugin Mixer] Ready.");
+  }).catch(console.error);
 }

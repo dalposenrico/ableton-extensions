@@ -5,247 +5,198 @@
 <title>Plugin Mixer</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
-    background: #1c1c1c;
-    color: #ccc;
+    background: #1c1c1c; color: #ccc;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 11px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    user-select: none;
+    font-size: 11px; height: 100vh;
+    display: flex; flex-direction: column;
+    overflow: hidden; user-select: none;
   }
 
-  /* ── Top bar ── */
+  /* ── Topbar ── */
   .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: #161616;
-    border-bottom: 1px solid #2a2a2a;
-    flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; background: #161616;
+    border-bottom: 1px solid #2a2a2a; flex-shrink: 0;
   }
-  .topbar h1 { font-size: 12px; font-weight: 600; color: #eee; letter-spacing: 0.5px; }
+  .topbar h1 { font-size: 12px; font-weight: 600; color: #eee; margin-right: 4px; }
+
+  .btn-group {
+    display: flex; background: #222; border-radius: 4px;
+    border: 1px solid #333; overflow: hidden;
+  }
+  .btn-group button {
+    padding: 4px 9px; cursor: pointer; color: #666;
+    background: none; border: none; font-size: 10px;
+    transition: background 0.1s, color 0.1s; white-space: nowrap;
+    border-right: 1px solid #333;
+  }
+  .btn-group button:last-child { border-right: none; }
+  .btn-group button:hover { color: #ccc; background: #2a2a2a; }
+  .btn-group button.active { background: #2a3a2a; color: #9fd09f; }
+  .btn-group button.danger:hover { color: #f08080; background: #2a1a1a; }
+
+  .spacer { flex: 1; }
+
+  .global-add-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: #2a3a2a; border: 1px solid #3a5a3a;
+    border-radius: 4px; color: #9fd09f; padding: 4px 10px;
+    font-size: 10px; cursor: pointer; transition: background 0.1s;
+    white-space: nowrap;
+  }
+  .global-add-btn:hover { background: #344834; }
+  .global-add-btn:disabled { opacity: 0.35; cursor: default; }
+
   .done-btn {
-    background: #2a4a6a;
-    border: none; border-radius: 4px;
-    color: #8cc8f0; padding: 5px 14px;
-    font-size: 11px; cursor: pointer;
-    transition: background 0.1s;
+    background: #2a4a6a; border: none; border-radius: 4px;
+    color: #8cc8f0; padding: 5px 14px; font-size: 11px;
+    cursor: pointer; transition: background 0.1s;
   }
   .done-btn:hover { background: #3a5a7a; }
 
-  /* ── Mixer grid ── */
-  .mixer-wrap {
-    flex: 1;
-    overflow: auto;
-    position: relative;
-  }
+  /* ── Grid ── */
+  .mixer-wrap { flex: 1; overflow: auto; position: relative; }
+  table { border-collapse: collapse; min-width: 100%; }
 
-  table {
-    border-collapse: collapse;
-    min-width: 100%;
-  }
-
-  /* Sticky track header row */
   thead tr th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #1a1a1a;
-    border-right: 1px solid #2a2a2a;
-    border-bottom: 2px solid #333;
-    padding: 0;
-    min-width: 130px;
-    width: 130px;
+    position: sticky; top: 0; z-index: 10;
+    background: #1a1a1a; border-right: 1px solid #2a2a2a;
+    border-bottom: 2px solid #333; padding: 0;
+    min-width: 140px; width: 140px;
   }
-
   .track-header-cell {
-    padding: 6px 8px;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 600;
-    font-size: 10px;
-    letter-spacing: 0.3px;
-    color: #bbb;
+    padding: 6px 8px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-weight: 600; font-size: 10px; letter-spacing: 0.3px; color: #bbb;
     border-bottom: 2px solid var(--track-color, #444);
+    cursor: pointer; transition: background 0.1s;
   }
+  .track-header-cell:hover { background: #252525; }
+  .track-header-cell.selected { background: #1e2e1e; color: #9fd09f; }
+  .track-header-cell.group-track { color: #d4a84b; }
+  .track-header-cell.group-track.selected { background: #2a2010; color: #e8c060; }
 
-  /* Slot label column */
   .slot-label-col {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    background: #181818;
-    border-right: 2px solid #333;
-    width: 36px;
-    min-width: 36px;
+    position: sticky; left: 0; z-index: 5;
+    background: #181818; border-right: 2px solid #333;
+    width: 32px; min-width: 32px;
   }
-  thead th.slot-label-col {
-    z-index: 15;
-    border-bottom: 2px solid #333;
-  }
+  thead th.slot-label-col { z-index: 15; border-bottom: 2px solid #333; }
+  .slot-label { font-size: 9px; color: #555; text-align: center; padding: 4px 2px; font-weight: 600; }
 
-  .slot-label {
-    writing-mode: horizontal-tb;
-    font-size: 9px;
-    color: #555;
-    text-align: center;
-    padding: 4px 2px;
-    letter-spacing: 0.2px;
-    font-weight: 600;
-  }
-
-  /* Body rows */
-  tbody tr {
-    border-bottom: 1px solid #222;
-  }
+  tbody tr { border-bottom: 1px solid #222; }
   tbody tr:hover td { background: #212121; }
   tbody tr:hover td.slot-label-col { background: #1e1e1e; }
 
-  /* Slot cells */
   td {
-    border-right: 1px solid #252525;
-    padding: 2px 3px;
-    vertical-align: top;
-    background: #1c1c1c;
-    height: 28px;
+    border-right: 1px solid #252525; padding: 2px 3px;
+    vertical-align: top; background: #1c1c1c; height: 28px;
   }
+  td.col-selected { background: #1a221a; }
+  tbody tr:hover td.col-selected { background: #1e271e; }
+  td.col-group { background: #1e1c14; }
+  tbody tr:hover td.col-group { background: #231f14; }
+  td.col-group.col-selected { background: #221e10; }
 
+  /* ── Plugin slots ── */
   .plugin-slot {
-    height: 24px;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    padding: 0 6px;
-    cursor: pointer;
-    gap: 4px;
-    transition: background 0.1s;
-    position: relative;
+    height: 24px; border-radius: 3px;
+    display: flex; align-items: center;
+    padding: 0 5px; gap: 3px; transition: background 0.1s;
   }
-
   .plugin-slot.filled {
-    background: #2a3a2a;
-    border: 1px solid #3a5a3a;
+    background: #2a3a2a; border: 1px solid #3a5a3a; cursor: grab;
   }
   .plugin-slot.filled:hover { background: #344834; }
+  .plugin-slot.filled.dragging { opacity: 0.4; cursor: grabbing; }
+  .plugin-slot.filled.drag-over { border-color: #6ab06a; background: #2e4a2e; box-shadow: 0 0 0 1px #6ab06a; }
 
   .plugin-slot.empty {
-    background: transparent;
-    border: 1px dashed #2a2a2a;
-    color: #383838;
+    background: transparent; border: 1px dashed #2a2a2a;
+    color: #383838; cursor: pointer;
   }
-  .plugin-slot.empty:hover {
-    border-color: #555;
-    background: #222;
-    color: #666;
-  }
+  .plugin-slot.empty:hover { border-color: #555; background: #222; color: #666; }
+  .plugin-slot.empty.drag-over { border-color: #6ab06a; background: #1e2e1e; border-style: solid; }
+
+  .plugin-slot.beyond { background: transparent; border: none; cursor: default; }
+  .plugin-slot.beyond.drag-over { background: #1e2e1e; border: 1px solid #3a5a3a; border-radius: 3px; }
 
   .plugin-name {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 10px;
-    color: #9fd09f;
+    flex: 1; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; font-size: 10px; color: #9fd09f;
+    pointer-events: none;
   }
-
-  .slot-actions {
-    display: none;
-    gap: 1px;
-    flex-shrink: 0;
-  }
+  .slot-actions { display: none; gap: 2px; flex-shrink: 0; }
   .plugin-slot.filled:hover .slot-actions { display: flex; }
 
   .slot-btn {
-    background: none; border: none;
-    color: #666; cursor: pointer;
-    font-size: 10px; padding: 1px 2px;
-    border-radius: 2px; line-height: 1;
+    background: none; border: none; color: #666; cursor: pointer;
+    font-size: 10px; padding: 1px 3px; border-radius: 2px; line-height: 1;
     transition: color 0.1s, background 0.1s;
   }
   .slot-btn:hover { color: #ccc; background: #444; }
   .slot-btn.del:hover { color: #f08080; background: #3a2020; }
+  .slot-btn.copy-sel { font-size: 9px; }
+  .slot-btn.copy-sel:hover { color: #8cc8f0; background: #1e3a4a; }
 
-  .plus-icon { font-size: 12px; color: #333; }
-
-  /* ── Add row ── */
-  .add-row td {
-    padding: 3px;
-    border-top: 2px solid #282828;
-  }
-  .add-slot-btn {
-    width: 100%; height: 22px;
-    background: none;
-    border: 1px dashed #333;
-    border-radius: 3px;
-    color: #555; cursor: pointer;
-    font-size: 11px;
-    transition: border-color 0.1s, color 0.1s;
-  }
-  .add-slot-btn:hover { border-color: #666; color: #999; }
+  .plus-icon { font-size: 12px; color: #333; pointer-events: none; }
 
   /* ── Dropdown ── */
-  .dropdown-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-  }
+  .dropdown-overlay { display: none; position: fixed; inset: 0; z-index: 100; }
   .dropdown-overlay.open { display: block; }
-
   .dropdown-box {
-    position: fixed;
-    background: #252525;
-    border: 1px solid #444;
-    border-radius: 5px;
-    width: 200px;
-    max-height: 220px;
-    overflow-y: auto;
-    z-index: 101;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    position: fixed; background: #252525; border: 1px solid #444;
+    border-radius: 5px; width: 220px; z-index: 101;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6); overflow: hidden;
   }
-
+  .dropdown-header { padding: 8px 8px 6px; border-bottom: 1px solid #333; display: flex; flex-direction: column; gap: 5px; }
   .dropdown-search {
-    width: 100%;
-    background: #1e1e1e;
-    border: none;
-    border-bottom: 1px solid #333;
-    padding: 7px 10px;
-    color: #ddd;
-    font-size: 11px;
-    outline: none;
+    width: 100%; background: #1e1e1e; border: 1px solid #333;
+    border-radius: 3px; padding: 5px 8px; color: #ddd; font-size: 11px; outline: none;
   }
-
-  .dropdown-list { padding: 4px 0; }
-
+  .dd-scope {
+    font-size: 9px; color: #666; padding: 0 2px;
+  }
+  .dd-scope strong { color: #999; }
+  .dropdown-list { max-height: 200px; overflow-y: auto; padding: 4px 0; }
   .dropdown-item {
-    padding: 5px 10px;
-    cursor: pointer;
-    font-size: 11px;
-    color: #bbb;
-    transition: background 0.08s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 5px 10px; cursor: pointer; font-size: 11px; color: #bbb;
+    transition: background 0.08s; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
   }
   .dropdown-item:hover { background: #333; color: #fff; }
+  .dropdown-item.highlighted { background: #2a3a2a; color: #9fd09f; }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #444; }
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <h1>Plugin Mixer</h1>
+
+  <!-- Selection controls -->
+  <div class="btn-group">
+    <button id="selAll">All</button>
+    <button id="selTracks">Tracks</button>
+    <button id="selGroups">Groups</button>
+    <button id="selClear" class="danger">✕</button>
+  </div>
+
+  <!-- Position toggle -->
+  <div class="btn-group">
+    <button id="posEnd" class="active">↓ End</button>
+    <button id="posStart">↑ Start</button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- Global add -->
+  <button class="global-add-btn" id="globalAddBtn" disabled>＋ Add to selected</button>
+
   <button class="done-btn" id="doneBtn">Done</button>
 </div>
 
@@ -253,10 +204,13 @@
   <table id="mixerTable"></table>
 </div>
 
-<!-- Floating dropdown for device picker -->
+<!-- Dropdown -->
 <div class="dropdown-overlay" id="dropdownOverlay">
   <div class="dropdown-box" id="dropdownBox">
-    <input class="dropdown-search" id="dropdownSearch" placeholder="Search devices…" autocomplete="off" />
+    <div class="dropdown-header">
+      <input class="dropdown-search" id="dropdownSearch" placeholder="Search devices…" autocomplete="off" />
+      <div class="dd-scope" id="ddScope"></div>
+    </div>
     <div class="dropdown-list" id="dropdownList"></div>
   </div>
 </div>
@@ -264,83 +218,151 @@
 <script>
   const TRACKS = '__TRACKS_DATA__';
   const ALL_DEVICES = '__DEVICES_DATA__';
-
   const pendingActions = [];
 
-  // ── Track colour palette (since SDK doesn't expose track.color) ───────────
-  const PALETTE = [
-    '#5a8a5a','#5a6a8a','#8a5a5a','#7a6a4a','#5a7a8a',
-    '#7a5a8a','#6a8a5a','#8a6a5a','#5a8a7a','#6a5a8a',
-  ];
-  function trackColor(i) { return PALETTE[i % PALETTE.length]; }
+  // ── State ─────────────────────────────────────────────────────────────────
+  const selectedTracks = new Set();
+  let addAtStart = false;
+  let dropdownMode = null; // { type: 'slot'|'global', ti, slot }
+  let dragSrc = null;      // { ti, di, deviceName }
 
-  // ── How many insert slots to show ─────────────────────────────────────────
-  const MAX_SLOTS = Math.max(10, ...TRACKS.map(t => t.devices.length + 1));
+  // ── Palette ───────────────────────────────────────────────────────────────
+  const TRACK_PALETTE  = ['#5a8a5a','#5a6a8a','#8a5a5a','#5a7a8a','#7a5a8a','#6a8a5a','#8a6a5a','#5a8a7a','#6a5a8a','#7a6a4a'];
+  const GROUP_PALETTE  = ['#8a6a20','#7a5a30','#8a7020','#7a6828'];
+  function trackColor(t, i) {
+    return t.isGroup ? GROUP_PALETTE[i % GROUP_PALETTE.length] : TRACK_PALETTE[i % TRACK_PALETTE.length];
+  }
+
+  function getMaxSlots() {
+    return Math.max(10, ...TRACKS.map(t => t.devices.length + 1));
+  }
+
+  // ── Selection helpers ─────────────────────────────────────────────────────
+  function updateSelectionUI() {
+    const n = selectedTracks.size;
+    document.getElementById('globalAddBtn').disabled = n === 0;
+    buildTable();
+  }
+
+  document.getElementById('selAll').onclick = () => {
+    TRACKS.forEach((_, i) => selectedTracks.add(i));
+    updateSelectionUI();
+  };
+  document.getElementById('selTracks').onclick = () => {
+    TRACKS.forEach((t, i) => { if (!t.isGroup) selectedTracks.add(i); });
+    updateSelectionUI();
+  };
+  document.getElementById('selGroups').onclick = () => {
+    TRACKS.forEach((t, i) => { if (t.isGroup) selectedTracks.add(i); });
+    updateSelectionUI();
+  };
+  document.getElementById('selClear').onclick = () => {
+    selectedTracks.clear();
+    updateSelectionUI();
+  };
+
+  // ── Position toggle ───────────────────────────────────────────────────────
+  document.getElementById('posEnd').onclick = () => {
+    addAtStart = false;
+    document.getElementById('posEnd').classList.add('active');
+    document.getElementById('posStart').classList.remove('active');
+  };
+  document.getElementById('posStart').onclick = () => {
+    addAtStart = true;
+    document.getElementById('posStart').classList.add('active');
+    document.getElementById('posEnd').classList.remove('active');
+  };
+
+  // ── Global add ────────────────────────────────────────────────────────────
+  document.getElementById('globalAddBtn').onclick = (e) => {
+    e.stopPropagation();
+    openDropdown({ type: 'global' }, document.getElementById('globalAddBtn'));
+  };
 
   // ── Build table ───────────────────────────────────────────────────────────
   function buildTable() {
+    const maxSlots = getMaxSlots();
     const table = document.getElementById('mixerTable');
     table.innerHTML = '';
 
     // Head
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
-
-    // Slot label corner cell
     const corner = document.createElement('th');
     corner.className = 'slot-label-col';
-    corner.innerHTML = '';
     headRow.appendChild(corner);
 
     TRACKS.forEach((t, ti) => {
       const th = document.createElement('th');
-      const color = trackColor(ti);
-      th.innerHTML = `<div class="track-header-cell" style="--track-color:${color}">${escHtml(t.name)}</div>`;
+      const color = trackColor(t, ti);
+      const isSelected = selectedTracks.has(ti);
+      const groupClass = t.isGroup ? ' group-track' : '';
+      const selClass = isSelected ? ' selected' : '';
+      const icon = t.isGroup ? '⊞ ' : '';
+      th.innerHTML = `<div class="track-header-cell${groupClass}${selClass}" data-ti-header="${ti}" style="--track-color:${color}">${icon}${escHtml(t.name)}</div>`;
       headRow.appendChild(th);
     });
     thead.appendChild(headRow);
     table.appendChild(thead);
 
-    // Body rows — one per insert slot
+    // Body
     const tbody = document.createElement('tbody');
-    for (let slot = 0; slot < MAX_SLOTS; slot++) {
+    for (let slot = 0; slot < maxSlots; slot++) {
       const row = document.createElement('tr');
 
-      // Slot label
       const labelTd = document.createElement('td');
       labelTd.className = 'slot-label-col';
       labelTd.innerHTML = `<div class="slot-label">${slot + 1}</div>`;
       row.appendChild(labelTd);
 
-      // One cell per track
       TRACKS.forEach((t, ti) => {
         const td = document.createElement('td');
+        if (selectedTracks.has(ti)) td.classList.add('col-selected');
+        if (t.isGroup) td.classList.add('col-group');
+
         const dev = t.devices[slot];
+        const isNextSlot = slot === t.devices.length;
+        const hasSel = selectedTracks.size > 0 && !selectedTracks.has(ti);
+
         if (dev) {
           td.innerHTML = `
-            <div class="plugin-slot filled" data-ti="${ti}" data-di="${slot}">
+            <div class="plugin-slot filled" draggable="true"
+              data-ti="${ti}" data-di="${slot}">
               <span class="plugin-name" title="${escHtml(dev.name)}">${escHtml(dev.name)}</span>
               <span class="slot-actions">
                 <button class="slot-btn del" data-action="delete" data-ti="${ti}" data-di="${slot}" title="Delete">×</button>
                 <button class="slot-btn" data-action="duplicate" data-ti="${ti}" data-di="${slot}" title="Duplicate">⧉</button>
+                ${hasSel ? `<button class="slot-btn copy-sel" data-action="copytosel" data-ti="${ti}" data-di="${slot}" title="Copy to selected">→sel</button>` : ''}
               </span>
             </div>`;
+        } else if (isNextSlot) {
+          td.innerHTML = `<div class="plugin-slot empty" data-ti="${ti}" data-slot="${slot}"><span class="plus-icon">+</span></div>`;
         } else {
-          td.innerHTML = `
-            <div class="plugin-slot empty" data-ti="${ti}" data-slot="${slot}">
-              <span class="plus-icon">+</span>
-            </div>`;
+          td.innerHTML = `<div class="plugin-slot beyond" data-ti="${ti}" data-slot="${slot}"></div>`;
         }
         row.appendChild(td);
       });
       tbody.appendChild(row);
     }
-
     table.appendChild(tbody);
+
+    // Re-attach drag events after rebuild
+    attachDragEvents();
   }
 
-  // ── Event delegation ──────────────────────────────────────────────────────
+  // ── Table click delegation ────────────────────────────────────────────────
   document.getElementById('mixerTable').addEventListener('click', (e) => {
+    // Header → toggle selection
+    const header = e.target.closest('[data-ti-header]');
+    if (header) {
+      const ti = parseInt(header.dataset.tiHeader);
+      if (selectedTracks.has(ti)) selectedTracks.delete(ti);
+      else selectedTracks.add(ti);
+      updateSelectionUI();
+      return;
+    }
+
+    // Action buttons
     const btn = e.target.closest('[data-action]');
     if (btn) {
       e.stopPropagation();
@@ -359,42 +381,143 @@
           TRACKS[ti].devices.forEach((d, i) => d.index = i);
           buildTable();
         }
+      } else if (btn.dataset.action === 'copytosel') {
+        const dev = TRACKS[ti].devices[di];
+        if (!dev) return;
+        [...selectedTracks].filter(idx => idx !== ti).forEach(idx => {
+          const pos = addAtStart ? 0 : TRACKS[idx].devices.length;
+          pendingActions.push({ action: 'insert', trackIndex: idx, deviceName: dev.name, position: pos });
+          TRACKS[idx].devices.splice(pos, 0, { name: dev.name, index: pos });
+          TRACKS[idx].devices.forEach((d, i) => d.index = i);
+        });
+        buildTable();
       }
       return;
     }
 
-    // Click on empty slot → open device picker
+    // Empty slot click → open dropdown for that slot
     const emptySlot = e.target.closest('.plugin-slot.empty');
     if (emptySlot) {
       const ti = parseInt(emptySlot.dataset.ti);
       const slot = parseInt(emptySlot.dataset.slot);
-      openDropdown(ti, slot, emptySlot);
+      openDropdown({ type: 'slot', ti, slot }, emptySlot);
       return;
     }
 
-    // Click on filled slot (not on buttons) → open device picker to replace
+    // Filled slot click (not button) → open dropdown to replace
     const filledSlot = e.target.closest('.plugin-slot.filled');
     if (filledSlot && !e.target.closest('.slot-btn')) {
       const ti = parseInt(filledSlot.dataset.ti);
       const di = parseInt(filledSlot.dataset.di);
-      // Delete existing then insert at same position
-      openDropdown(ti, di, filledSlot, true);
+      openDropdown({ type: 'slot', ti, slot: di, replace: true }, filledSlot);
     }
   });
 
-  // ── Dropdown ──────────────────────────────────────────────────────────────
-  let dropdownTarget = null; // { ti, slot, replace }
+  // ── Drag and Drop ─────────────────────────────────────────────────────────
+  function attachDragEvents() {
+    document.querySelectorAll('.plugin-slot.filled').forEach(el => {
+      el.addEventListener('dragstart', onDragStart);
+      el.addEventListener('dragend', onDragEnd);
+    });
+    document.querySelectorAll('.plugin-slot.empty, .plugin-slot.beyond').forEach(el => {
+      el.addEventListener('dragover', onDragOver);
+      el.addEventListener('dragleave', onDragLeave);
+      el.addEventListener('drop', onDrop);
+    });
+    document.querySelectorAll('.plugin-slot.filled').forEach(el => {
+      el.addEventListener('dragover', onDragOver);
+      el.addEventListener('dragleave', onDragLeave);
+      el.addEventListener('drop', onDrop);
+    });
+  }
 
-  function openDropdown(ti, slot, anchorEl, replace = false) {
-    dropdownTarget = { ti, slot, replace };
+  function onDragStart(e) {
+    const slot = e.currentTarget;
+    const ti = parseInt(slot.dataset.ti);
+    const di = parseInt(slot.dataset.di);
+    dragSrc = { ti, di, deviceName: TRACKS[ti].devices[di]?.name };
+    slot.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragSrc.deviceName);
+  }
+
+  function onDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrc = null;
+  }
+
+  function onDragOver(e) {
+    if (!dragSrc) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drag-over');
+  }
+
+  function onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (!dragSrc) return;
+
+    const target = e.currentTarget;
+    const toTi = parseInt(target.dataset.ti);
+    const toSlot = target.dataset.slot !== undefined
+      ? parseInt(target.dataset.slot)                   // empty/beyond → insert at slot index
+      : parseInt(target.dataset.di);                    // filled → swap position
+
+    if (dragSrc.ti === toTi && dragSrc.di === toSlot) return; // same slot, no-op
+
+    const devName = dragSrc.deviceName;
+    const fromTi = dragSrc.ti;
+    const fromDi = dragSrc.di;
+
+    // Determine actual target position
+    let actualPos = toSlot;
+    if (target.classList.contains('beyond')) {
+      actualPos = TRACKS[toTi].devices.length; // drop beyond = append
+    }
+
+    // Update local state
+    TRACKS[fromTi].devices.splice(fromDi, 1);
+    TRACKS[fromTi].devices.forEach((d, i) => d.index = i);
+    TRACKS[toTi].devices.splice(actualPos, 0, { name: devName, index: actualPos });
+    TRACKS[toTi].devices.forEach((d, i) => d.index = i);
+
+    // Queue actions for Live
+    pendingActions.push({ action: 'delete', trackIndex: fromTi, deviceIndex: fromDi });
+    pendingActions.push({ action: 'insert', trackIndex: toTi, deviceName: devName, position: actualPos });
+
+    dragSrc = null;
+    buildTable();
+  }
+
+  // ── Dropdown ──────────────────────────────────────────────────────────────
+  function openDropdown(mode, anchorEl) {
+    dropdownMode = mode;
     const overlay = document.getElementById('dropdownOverlay');
     const box = document.getElementById('dropdownBox');
     const search = document.getElementById('dropdownSearch');
+    const scope = document.getElementById('ddScope');
 
-    // Position near the clicked slot
+    if (mode.type === 'global') {
+      const pos = addAtStart ? 'start' : 'end';
+      scope.innerHTML = `Adding to <strong>${selectedTracks.size} selected track${selectedTracks.size > 1 ? 's' : ''}</strong> at <strong>${pos}</strong>`;
+    } else {
+      const tName = TRACKS[mode.ti]?.name ?? '';
+      const pos = mode.replace ? `slot ${mode.slot + 1}` : (addAtStart ? 'start' : 'end');
+      scope.innerHTML = mode.replace
+        ? `Replacing slot ${mode.slot + 1} on <strong>${escHtml(tName)}</strong>`
+        : `Adding to <strong>${escHtml(tName)}</strong> at ${pos}`;
+    }
+
     const rect = anchorEl.getBoundingClientRect();
-    box.style.left = Math.min(rect.left, window.innerWidth - 210) + 'px';
-    box.style.top = (rect.bottom + 4) + 'px';
+    box.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+    const topPos = rect.bottom + 4;
+    box.style.top = Math.min(topPos, window.innerHeight - 280) + 'px';
 
     overlay.classList.add('open');
     search.value = '';
@@ -404,37 +527,47 @@
 
   function closeDropdown() {
     document.getElementById('dropdownOverlay').classList.remove('open');
-    dropdownTarget = null;
+    dropdownMode = null;
   }
 
   function filterDropdown(q) {
     const list = document.getElementById('dropdownList');
     const filtered = q ? ALL_DEVICES.filter(d => d.toLowerCase().includes(q.toLowerCase())) : ALL_DEVICES;
     list.innerHTML = '';
-    filtered.slice(0, 40).forEach(d => {
+    filtered.slice(0, 50).forEach(d => {
       const item = document.createElement('div');
       item.className = 'dropdown-item';
       item.textContent = d;
-      item.onclick = () => selectDevice(d);
+      item.onclick = (e) => { e.stopPropagation(); selectDevice(d); };
       list.appendChild(item);
     });
   }
 
   function selectDevice(deviceName) {
-    if (!dropdownTarget) return;
-    const { ti, slot, replace } = dropdownTarget;
+    if (!dropdownMode) return;
 
-    if (replace) {
-      // Delete existing first, then insert at same slot
-      pendingActions.push({ action: 'delete', trackIndex: ti, deviceIndex: slot });
-      TRACKS[ti].devices.splice(slot, 1);
-      pendingActions.push({ action: 'insert', trackIndex: ti, deviceName, position: slot });
-      TRACKS[ti].devices.splice(slot, 0, { name: deviceName, index: slot });
+    if (dropdownMode.type === 'global') {
+      // Add to all selected tracks at start/end
+      [...selectedTracks].forEach(idx => {
+        const pos = addAtStart ? 0 : TRACKS[idx].devices.length;
+        pendingActions.push({ action: 'insert', trackIndex: idx, deviceName, position: pos });
+        TRACKS[idx].devices.splice(pos, 0, { name: deviceName, index: pos });
+        TRACKS[idx].devices.forEach((d, i) => d.index = i);
+      });
     } else {
-      pendingActions.push({ action: 'insert', trackIndex: ti, deviceName, position: slot });
-      TRACKS[ti].devices.splice(slot, 0, { name: deviceName, index: slot });
+      const { ti, slot, replace } = dropdownMode;
+      if (replace) {
+        pendingActions.push({ action: 'delete', trackIndex: ti, deviceIndex: slot });
+        TRACKS[ti].devices.splice(slot, 1);
+        pendingActions.push({ action: 'insert', trackIndex: ti, deviceName, position: slot });
+        TRACKS[ti].devices.splice(slot, 0, { name: deviceName, index: slot });
+      } else {
+        const pos = addAtStart ? 0 : slot;
+        pendingActions.push({ action: 'insert', trackIndex: ti, deviceName, position: pos });
+        TRACKS[ti].devices.splice(pos, 0, { name: deviceName, index: pos });
+      }
+      TRACKS[ti].devices.forEach((d, i) => d.index = i);
     }
-    TRACKS[ti].devices.forEach((d, i) => d.index = i);
 
     closeDropdown();
     buildTable();
@@ -456,12 +589,10 @@
     }
   });
 
-  // ── Utils ─────────────────────────────────────────────────────────────────
   function escHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Init ──────────────────────────────────────────────────────────────────
   buildTable();
 </script>
 </body>
